@@ -1,0 +1,165 @@
+.tetrisContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.gameInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 150px;
+}
+
+.gameBoard {
+  border: 2px solid #333;
+  background-color: #000;
+  position: relative;
+}
+
+.gameControls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 150px;
+  align-items: center;
+}
+
+.infoPanel {
+  background-color: #1e1e1e;
+  border-radius: 5px;
+  padding: 10px;
+  text-align: center;
+  min-width: 120px;
+}
+
+.infoTitle {
+  font-size: 16px;
+  margin-bottom: 5px;
+  color: #aaa;
+}
+
+.infoValue {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff5252;
+}
+
+.piecePreview {
+  background-color: #1e1e1e;
+  border-radius: 5px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.previewTitle {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: #aaa;
+}
+
+.nextCanvas, .holdCanvas {
+  background-color: #000;
+  border: 1px solid #333;
+}
+
+.tetrisCanvas {
+  display: block;
+}
+
+.gameMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.restartButton, .resumeButton, .pauseButton {
+  background-color: #ff5252;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+}
+
+.pauseButton {
+  background-color: #607d8b;
+}
+
+.restartButton:hover, .resumeButton:hover {
+  background-color: #ff1a1a;
+}
+
+.pauseButton:hover {
+  background-color: #4b636e;
+}
+
+/* 音量控制按钮 */
+.soundButton {
+  background-color: #2d2d2d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  align-self: center;
+}
+
+.soundButton:hover {
+  background-color: #444;
+}
+
+/* 游戏结束或暂停覆盖层 */
+.gameOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .tetrisContainer {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .gameInfo, .gameControls {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .infoPanel {
+    flex: 1;
+    min-width: 80px;
+  }
+  
+  .soundButton {
+    margin: 10px;
+  }
+} 

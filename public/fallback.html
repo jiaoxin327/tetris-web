@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris Web - Fallback</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+        Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+      background-color: #121212;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 600px;
+      padding: 2rem;
+    }
+    
+    h1 {
+      color: #ff5252;
+      margin-bottom: 1rem;
+    }
+    
+    .card {
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+    
+    .instructions {
+      text-align: left;
+      margin-top: 1rem;
+    }
+    
+    .button {
+      background-color: #ff5252;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .button:hover {
+      background-color: #ff1a1a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tetris Web</h1>
+    
+    <div class="card">
+      <h2>Node.js 运行环境缺失</h2>
+      <p>要运行这个 Tetris 网页版游戏，需要安装 Node.js 和 npm。</p>
+      
+      <a href="https://nodejs.org/en/download/" class="button" target="_blank">
+        下载 Node.js
+      </a>
+    </div>
+    
+    <div class="card instructions">
+      <h2>安装步骤:</h2>
+      <ol>
+        <li>下载并安装 Node.js</li>
+        <li>打开命令提示符 (CMD) 或 PowerShell</li>
+        <li>导航到 tetris-web 目录: <code>cd path/to/tetris-web</code></li>
+        <li>安装依赖: <code>npm install</code></li>
+        <li>启动开发服务器: <code>npm run dev</code></li>
+        <li>在浏览器中访问: <code>http://localhost:3000</code></li>
+      </ol>
+    </div>
+    
+    <p>或者访问已部署的在线版本（如果有）。</p>
+  </div>
+</body>
+</html>

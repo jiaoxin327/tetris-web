@@ -107,22 +107,38 @@ export function mergeBoard(board: (string | number)[][], piece: TetrisPiece): (s
   return newBoard;
 }
 
-// 清除填满的行
-export function clearLines(board: (string | number)[][]): number {
+// 清除已完成的行
+export const clearLines = (board: number[][]): [number[][], number] => {
+  // 创建游戏板的深拷贝
+  const newBoard = JSON.parse(JSON.stringify(board));
+  const height = newBoard.length;
+  const width = newBoard[0].length;
   let linesCleared = 0;
-  const newBoard = board.filter(row => {
-    const isFull = row.every(cell => cell !== 0);
-    if (isFull) {
+
+  // 从底部开始向上检查每一行
+  for (let y = height - 1; y >= 0; y--) {
+    // 检查当前行是否已填满
+    const isRowFull = newBoard[y].every((cell: number) => cell !== 0);
+    
+    if (isRowFull) {
       linesCleared++;
-      return false;
+      
+      // 将当前行上方的所有行向下移动一行
+      for (let row = y; row > 0; row--) {
+        for (let x = 0; x < width; x++) {
+          newBoard[row][x] = newBoard[row - 1][x];
+        }
+      }
+      
+      // 在顶部添加一个空行
+      for (let x = 0; x < width; x++) {
+        newBoard[0][x] = 0;
+      }
+      
+      // 由于行已经下移，我们需要重新检查当前位置
+      y++;
     }
-    return true;
-  });
-  
-  // 在顶部添加新的空行
-  while (newBoard.length < board.length) {
-    newBoard.unshift(Array(board[0].length).fill(0));
   }
-  
-  return linesCleared;
-}
+
+  return [newBoard, linesCleared];
+};

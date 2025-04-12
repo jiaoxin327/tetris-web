@@ -408,7 +408,10 @@ const TetrisGame: React.FC = () => {
     state.board = mergeBoard(state.board, state.currentPiece);
     
     // 消除已完成的行
-    const clearedLines = clearLines(state.board);
+    const [updatedBoard, clearedLines] = clearLines(state.board);
+    
+    // 更新游戏板
+    state.board = updatedBoard;
     
     if (clearedLines > 0) {
       // 播放消除行音效

@@ -41,7 +41,7 @@ export default function Home() {
       </main>
 
       <footer className={styles.footer}>
-        <p>Made with ❤️ using Next.js</p>
+        <p>Made with ❤️ using Next.js | 作者：如愿 939813944@qq.com</p>
       </footer>
     </div>
   );

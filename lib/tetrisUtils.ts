@@ -108,7 +108,7 @@ export function mergeBoard(board: (string | number)[][], piece: TetrisPiece): (s
 }
 
 // 清除已完成的行
-export const clearLines = (board: number[][]): [number[][], number] => {
+export const clearLines = (board: (string | number)[][]): [(string | number)[][], number] => {
   // 创建游戏板的深拷贝
   const newBoard = JSON.parse(JSON.stringify(board));
   const height = newBoard.length;
@@ -118,7 +118,7 @@ export const clearLines = (board: number[][]): [number[][], number] => {
   // 从底部开始向上检查每一行
   for (let y = height - 1; y >= 0; y--) {
     // 检查当前行是否已填满
-    const isRowFull = newBoard[y].every((cell: number) => cell !== 0);
+    const isRowFull = newBoard[y].every((cell: string | number) => cell !== 0);
     
     if (isRowFull) {
       linesCleared++;

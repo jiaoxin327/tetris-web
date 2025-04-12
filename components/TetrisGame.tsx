@@ -29,6 +29,8 @@ const AUDIO_PATHS = {
 };
 
 const TetrisGame: React.FC = () => {
+  // 添加一个状态来跟踪音频是否已准备好播放
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -46,6 +48,24 @@ const TetrisGame: React.FC = () => {
   const dropSoundRef = useRef<HTMLAudioElement | null>(null);
   const clearSoundRef = useRef<HTMLAudioElement | null>(null);
   const gameOverSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // *** ADDED: useEffect to log gameOver state changes ***
+  useEffect(() => {
+    console.log(`gameOver state changed: ${gameOver}`);
+  }, [gameOver]);
+
+  // 全局用户交互处理函数
+  const handleGlobalUserInteraction = () => {
+    if (!audioEnabled && !muted) {
+      setAudioEnabled(true);
+      playBackgroundMusic();
+      
+      // 移除事件监听器
+      ['click', 'keydown', 'touchstart'].forEach(event => {
+        document.removeEventListener(event, handleGlobalUserInteraction);
+      });
+    }
+  };
 
   // 使用useRef来存储游戏状态，避免重渲染问题
   const gameStateRef = useRef<GameState>({
@@ -75,12 +95,16 @@ const TetrisGame: React.FC = () => {
     if (bgmRef.current) {
       bgmRef.current.loop = true;
       bgmRef.current.volume = 0.5;
+      // 设置预加载模式为'auto'，尽可能提前加载
+      bgmRef.current.preload = 'auto';
     }
     
     // 配置音效
     const configureSoundEffect = (audio: HTMLAudioElement | null) => {
       if (audio) {
         audio.volume = 0.7;
+        // 同样为音效设置预加载
+        audio.preload = 'auto';
       }
     };
     
@@ -90,20 +114,47 @@ const TetrisGame: React.FC = () => {
     configureSoundEffect(clearSoundRef.current);
     configureSoundEffect(gameOverSoundRef.current);
     
-    // 播放背景音乐
+    // 添加全局事件监听器以触发音频播放
+    ['click', 'keydown', 'touchstart'].forEach(event => {
+      document.addEventListener(event, handleGlobalUserInteraction, { once: false });
+    });
+    
+    // 尝试播放背景音乐，但可能会因浏览器策略失败
     playBackgroundMusic();
     
     // 清理函数
     return () => {
+      // 移除全局事件监听器
+      ['click', 'keydown', 'touchstart'].forEach(event => {
+        document.removeEventListener(event, handleGlobalUserInteraction);
+      });
+      
       stopBackgroundMusic();
+      // 清理其他音频资源
+      [moveSoundRef, rotateSoundRef, dropSoundRef, clearSoundRef, gameOverSoundRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current = null;
+        }
+      });
     };
   }, []);
   
   // 播放背景音乐
   const playBackgroundMusic = () => {
     if (bgmRef.current && !muted) {
-      bgmRef.current.play().catch(e => {
-        console.log('背景音乐播放失败，可能需要用户交互:', e);
+      // 确保背景音乐从头开始播放
+      bgmRef.current.currentTime = 0;
+      
+      // 确保背景音乐始终循环播放
+      bgmRef.current.loop = true;
+      
+      // 使用Promise捕获可能的播放失败
+      bgmRef.current.play().then(() => {
+        setAudioEnabled(true);
+      }).catch(e => {
+        console.log('背景音乐播放失败，需要用户交互:', e);
+        setAudioEnabled(false);
       });
     }
   };
@@ -134,8 +185,13 @@ const TetrisGame: React.FC = () => {
       
       if (newMuted) {
         stopBackgroundMusic();
-      } else {
+      } else if (audioEnabled) {
+        // 只有在已启用音频的情况下才尝试播放
         playBackgroundMusic();
+      } else {
+        // 如果音频尚未启用，标记为需要播放但不立即播放
+        // 等待用户交互时会自动触发
+        setAudioEnabled(true);
       }
       
       return newMuted;
@@ -205,16 +261,15 @@ const TetrisGame: React.FC = () => {
   const gameLoop = (time: number) => {
     const state = gameStateRef.current;
     const isGameOver = gameOver;
-    // const isPaused = paused; // 不再从React状态读取
 
     // 持续请求下一帧，除非组件卸载
     state.requestId = requestAnimationFrame(gameLoop);
 
-    // 绘制当前状态
+    // 绘制当前状态 - 无论游戏是否结束都要绘制
     draw();
 
     // --- 游戏逻辑更新 ---
-    // 使用ref中的isPaused状态进行判断
+    // 仅当游戏未结束且未暂停时更新游戏逻辑
     if (state.isPaused || isGameOver) {
       return; // 不执行后续逻辑
     }
@@ -235,6 +290,12 @@ const TetrisGame: React.FC = () => {
   
   // 处理键盘输入
   const handleKeyDown = (event: KeyboardEvent) => {
+    // 尝试播放背景音乐（如果尚未播放）
+    if (!audioEnabled && !muted) {
+      setAudioEnabled(true);
+      playBackgroundMusic();
+    }
+
     // 阻止方向键滚动页面
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(event.key)) {
       event.preventDefault();
@@ -253,6 +314,9 @@ const TetrisGame: React.FC = () => {
     // 游戏结束状态只响应重置游戏键
     if (isGameOver) {
       if (event.key === 'r' || event.key === 'R') {
+        console.log("R键被按下，重置游戏");
+        // 简化处理，直接调用resetGame
+        setGameOver(false);
         resetGame();
       }
       return;
@@ -398,9 +462,25 @@ const TetrisGame: React.FC = () => {
     const isGameOver = isTopCollision || checkPieceInTopZone(state.board);
     
     if (isGameOver) {
+      console.log("游戏结束检测触发");
+      // 设置游戏结束状态
       setGameOver(true);
-      playSound(gameOverSoundRef); // 播放游戏结束音效
-      stopBackgroundMusic(); // 停止背景音乐
+      // 更新内部ref状态
+      state.isPaused = false; // 确保不是暂停状态
+      
+      // 播放游戏结束音效
+      playSound(gameOverSoundRef); 
+      // 停止背景音乐
+      stopBackgroundMusic(); 
+      
+      // 重置背景音乐状态以确保下次能正确播放
+      if (bgmRef.current) {
+        bgmRef.current.currentTime = 0;
+      }
+      
+      // 不需要强制绘制，gameLoop会处理
+      // setTimeout(() => { ... }, 0);
+      
       return;
     }
     
@@ -443,9 +523,25 @@ const TetrisGame: React.FC = () => {
     
     // 检查新方块是否一出现就已发生碰撞，如果是则游戏结束
     if (checkCollision(state.board, state.currentPiece, 0, 0)) {
+      console.log("新方块碰撞，游戏结束检测触发");
+      // 设置游戏结束状态
       setGameOver(true);
-      playSound(gameOverSoundRef); // 播放游戏结束音效
-      stopBackgroundMusic(); // 停止背景音乐
+      // 更新内部ref状态
+      state.isPaused = false; // 确保不是暂停状态
+      
+      // 播放游戏结束音效
+      playSound(gameOverSoundRef); 
+      // 停止背景音乐
+      stopBackgroundMusic(); 
+      
+      // 重置背景音乐状态以确保下次能正确播放
+      if (bgmRef.current) {
+        bgmRef.current.currentTime = 0;
+      }
+      
+      // 不需要强制绘制，gameLoop会处理
+      // setTimeout(() => { ... }, 0);
+      
       return;
     }
     
@@ -483,6 +579,12 @@ const TetrisGame: React.FC = () => {
   const resetGame = () => {
     const state = gameStateRef.current;
     
+    console.log("重置游戏被调用"); // 添加日志确认函数被调用
+    
+    // 立即设置游戏未结束状态 - 移到最前面，防止状态更新延迟
+    setGameOver(false);
+    setPaused(false);
+    
     // 确保取消任何现有的动画帧请求
     if (state.requestId) {
       cancelAnimationFrame(state.requestId);
@@ -504,14 +606,23 @@ const TetrisGame: React.FC = () => {
     setScore(0);
     setLevel(1);
     setLinesCleared(0);
-    setGameOver(false);
-    setPaused(false); // 确保重置后不是暂停状态
     
     // 确保绘制是最新的游戏状态
-    draw();
+    draw(); // 绘制一次清空后的状态
     
-    // 重新播放背景音乐
-    playBackgroundMusic();
+    // 先停止背景音乐，然后再重新播放
+    stopBackgroundMusic();
+    
+    // 使用setTimeout确保音乐停止和重新播放之间有足够的间隔
+    setTimeout(() => {
+      // 重新播放背景音乐
+      if (!muted && audioEnabled) {
+        playBackgroundMusic();
+      }
+    }, 100);
+    
+    // 不需要额外的强制重绘
+    // setTimeout(() => { ... }, 0);
     
     // 重新启动游戏循环
     state.requestId = requestAnimationFrame(gameLoop);
@@ -533,7 +644,7 @@ const TetrisGame: React.FC = () => {
       }
     } else {
       // 恢复游戏时也恢复背景音乐
-      if (!muted) {
+      if (!muted && audioEnabled) {
         playBackgroundMusic();
       }
       // 从暂停恢复
@@ -554,6 +665,9 @@ const TetrisGame: React.FC = () => {
     const isPaused = paused;
     const isGameOver = gameOver;
     
+    // *** ADDED: Log the state being used for drawing ***
+    console.log(`Draw function - isGameOver: ${isGameOver}, isPaused: ${isPaused}`);
+
     // 清除画布
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas!.width, canvas!.height);
@@ -561,12 +675,13 @@ const TetrisGame: React.FC = () => {
     // 绘制游戏板
     drawBoard(ctx);
     
-    // 总是绘制当前方块，无论游戏状态如何
-    drawPiece(ctx, gameStateRef.current.currentPiece);
-    
-    // 只有在非暂停且非游戏结束状态下才绘制幽灵方块
+    // 只有在非暂停且非游戏结束状态下才绘制幽灵方块 和 当前方块
     if (!isPaused && !isGameOver) {
+      drawPiece(ctx, gameStateRef.current.currentPiece); // Moved piece drawing here
       drawGhostPiece(ctx);
+    } else if (isGameOver) {
+      // If game is over, maybe still draw the final piece position?
+      // The board state includes the merged piece, so drawBoard covers this.
     }
     
     // 绘制下一个方块
@@ -577,8 +692,10 @@ const TetrisGame: React.FC = () => {
     
     // 绘制游戏结束或暂停画面
     if (isGameOver) {
+      console.log("Draw function: Calling drawGameOver");
       drawGameOver(ctx);
     } else if (isPaused) {
+      console.log("Draw function: Calling drawPaused");
       drawPaused(ctx);
     }
   };
@@ -748,24 +865,39 @@ const TetrisGame: React.FC = () => {
   
   // 绘制游戏结束画面
   const drawGameOver = (ctx: CanvasRenderingContext2D) => {
-    // 半透明背景
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    console.log("绘制游戏结束画面");
+    
+    // 半透明背景 - 加深透明度使提示更明显
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
+    
+    // 添加边框
+    ctx.strokeStyle = '#ff5252';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, canvasRef.current!.width - 20, canvasRef.current!.height - 20);
     
     // 游戏结束文字
     ctx.fillStyle = '#ff5252';
-    ctx.font = '36px Arial';
+    ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('游戏结束!', canvasRef.current!.width / 2, canvasRef.current!.height / 2 - 40);
+    ctx.fillText('游戏结束!', canvasRef.current!.width / 2, canvasRef.current!.height / 2 - 50);
     
     // 分数
     ctx.fillStyle = '#fff';
-    ctx.font = '24px Arial';
+    ctx.font = 'bold 28px Arial';
     ctx.fillText(`最终分数: ${score}`, canvasRef.current!.width / 2, canvasRef.current!.height / 2);
     
-    // 重新开始提示
-    ctx.font = '20px Arial';
-    ctx.fillText('按 R 键或点击下方按钮重新开始', canvasRef.current!.width / 2, canvasRef.current!.height / 2 + 40);
+    // 重新开始提示 - 明确可以按按钮或R键重新开始
+    ctx.font = 'bold 24px Arial';
+    ctx.fillStyle = '#ffff00'; // 黄色更显眼
+    ctx.fillText('按 R 键重新开始', canvasRef.current!.width / 2, canvasRef.current!.height / 2 + 50);
+    
+    // 用闪烁效果提示R键
+    const now = Date.now();
+    if (Math.floor(now / 500) % 2 === 0) {
+      ctx.fillStyle = '#ff9900';
+      ctx.fillText('R', canvasRef.current!.width / 2, canvasRef.current!.height / 2 + 100);
+    }
   };
   
   // 绘制暂停画面
@@ -786,7 +918,12 @@ const TetrisGame: React.FC = () => {
   };
   
   return (
-    <div className={styles.tetrisContainer}>
+    <div className={styles.tetrisContainer} onClick={() => {
+      // 任何对游戏区域的点击都尝试播放背景音乐
+      if (!muted) {
+        playBackgroundMusic();
+      }
+    }}>
       <div className={styles.gameInfo}>
         <div className={styles.infoPanel}>
           <div className={styles.infoTitle}>分数</div>
@@ -811,7 +948,10 @@ const TetrisGame: React.FC = () => {
         {/* 音量控制按钮 */}
         <button 
           className={styles.soundButton}
-          onClick={toggleMute}
+          onClick={(e) => {
+            toggleMute();
+            e.stopPropagation(); // 阻止冒泡，避免触发container的点击事件
+          }}
           title={muted ? "打开声音" : "静音"}
         >
           {muted ? "🔇" : "🔊"}
@@ -821,21 +961,34 @@ const TetrisGame: React.FC = () => {
       <div className={styles.gameBoard}>
         <canvas ref={canvasRef} className={styles.tetrisCanvas} />
         
-        {/* 游戏结束或暂停的浮层按钮 */}
+        {/* 游戏结束或暂停的浮层按钮 - 确保在Canvas之上 */}
         {(gameOver || paused) && (
-          <div className={styles.gameOverlay}>
+          <div 
+            className={styles.gameOverlay}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.gameMessage}>
               {gameOver ? (
                 <button 
                   className={styles.restartButton} 
-                  onClick={resetGame}
+                  id="restart-overlay-button"
+                  onClick={() => {
+                    console.log("游戏结束浮层按钮被点击");
+                    setGameOver(false);
+                    resetGame();
+                  }}
                 >
                   重新开始游戏
                 </button>
               ) : (
                 <button 
                   className={styles.resumeButton} 
-                  onClick={togglePause}
+                  onClick={() => {
+                    if (!audioEnabled && !muted) {
+                      setAudioEnabled(true);
+                    }
+                    togglePause();
+                  }}
                 >
                   继续游戏
                 </button>
@@ -854,7 +1007,14 @@ const TetrisGame: React.FC = () => {
         {!gameOver && (
           <button 
             className={paused ? styles.resumeButton : styles.pauseButton} 
-            onClick={togglePause}
+            onClick={(e) => {
+              // 尝试启动背景音乐
+              if (!audioEnabled && !muted) {
+                setAudioEnabled(true);
+              }
+              togglePause();
+              e.stopPropagation(); // 阻止冒泡
+            }}
           >
             {paused ? '继续游戏' : '暂停游戏'}
           </button>
@@ -862,8 +1022,13 @@ const TetrisGame: React.FC = () => {
         
         {gameOver && (
           <button 
-            className={styles.restartButton} 
-            onClick={resetGame}
+            className={styles.restartButton}
+            id="restart-bottom-button"
+            onClick={() => {
+              console.log("底部重新开始按钮被点击");
+              setGameOver(false);
+              resetGame();
+            }}
           >
             重新开始
           </button>
